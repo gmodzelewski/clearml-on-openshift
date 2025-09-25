@@ -1,0 +1,104 @@
+{{- if .Values.webserver.webFiles.copyJob.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "webserver.referenceName" . }}-copy-web-files
+  labels:
+    {{- include "clearml.labels" . | nindent 4 }}
+    app.kubernetes.io/component: webserver
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "1"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  template:
+    metadata:
+      labels:
+        {{- include "clearml.labels" . | nindent 8 }}
+        app.kubernetes.io/component: webserver
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        {{- if .Values.webserver.webFiles.copyJob.securityContext.fsGroup }}
+        fsGroup: {{ .Values.webserver.webFiles.copyJob.securityContext.fsGroup }}
+        {{- end }}
+      initContainers:
+      - name: extract-files
+        image: "{{ include "registryNamePrefix" (dict "globalValues" .Values.global "imageRegistryValue" .Values.webserver.image.registry) }}{{ .Values.webserver.image.repository }}:{{ .Values.webserver.image.tag }}"
+        imagePullPolicy: {{ .Values.webserver.image.pullPolicy }}
+        securityContext:
+          runAsNonRoot: true
+          {{- if .Values.webserver.webFiles.copyJob.securityContext.runAsUser }}
+          runAsUser: {{ .Values.webserver.webFiles.copyJob.securityContext.runAsUser }}
+          {{- end }}
+          {{- if .Values.webserver.webFiles.copyJob.securityContext.runAsGroup }}
+          runAsGroup: {{ .Values.webserver.webFiles.copyJob.securityContext.runAsGroup }}
+          {{- end }}
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+              - ALL
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Extracting ClearML web files..."
+          if [ ! -f /usr/share/nginx/html/index.html ]; then
+            echo "❌ Error: No web files found in image!"
+            exit 1
+          fi
+          cp -r /usr/share/nginx/html/* /web-files/
+          echo "✅ Files extracted successfully:"
+          ls -la /web-files/ | head -10
+        volumeMounts:
+        - name: temp-files
+          mountPath: /web-files
+        resources:
+          {{- toYaml .Values.webserver.webFiles.copyJob.resources.extractFiles | nindent 10 }}
+      containers:
+      - name: copy-to-pvc
+        image: {{ .Values.webserver.webFiles.copyJob.helperImage }}
+        imagePullPolicy: Always
+        securityContext:
+          runAsNonRoot: true
+          {{- if .Values.webserver.webFiles.copyJob.securityContext.runAsUser }}
+          runAsUser: {{ .Values.webserver.webFiles.copyJob.securityContext.runAsUser }}
+          {{- end }}
+          {{- if .Values.webserver.webFiles.copyJob.securityContext.runAsGroup }}
+          runAsGroup: {{ .Values.webserver.webFiles.copyJob.securityContext.runAsGroup }}
+          {{- end }}
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+              - ALL
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Copying files to PVC..."
+          # Only copy if PVC is empty or doesn't have index.html
+          if [ ! -f /usr/share/nginx/html/index.html ]; then
+            cp -r /web-files/* /usr/share/nginx/html/
+            echo "✅ Files copied to PVC successfully:"
+            ls -la /usr/share/nginx/html/ | head -10
+          else
+            echo "ℹ️  Web files already exist in PVC, skipping copy"
+          fi
+        volumeMounts:
+        - name: temp-files
+          mountPath: /web-files
+        - name: webserver-html
+          mountPath: /usr/share/nginx/html
+        resources:
+          {{- toYaml .Values.webserver.webFiles.copyJob.resources.copyToPvc | nindent 10 }}
+      restartPolicy: Never
+      volumes:
+      - name: temp-files
+        emptyDir: {}
+      - name: webserver-html
+        persistentVolumeClaim:
+          claimName: {{ include "webserver.referenceName" . }}-html
+  backoffLimit: {{ .Values.webserver.webFiles.copyJob.backoffLimit }}
+{{- end }} 

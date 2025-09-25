@@ -1,0 +1,183 @@
+# Disable agents 
+agentGroups:
+  - name: "default"
+    queues: "default"
+    replicaCount: 0
+
+# Enable external services as dependencies
+mongodb:
+  enabled: true
+  auth:
+    enabled: false
+  architecture: standalone
+  
+  # Override Bitnami security contexts for OpenShift
+  podSecurityContext:
+    enabled: true
+    runAsNonRoot: true
+    # Don't set fsGroup, let OpenShift handle it
+  containerSecurityContext:
+    enabled: true
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
+
+redis:
+  enabled: true
+  auth:
+    enabled: false
+  architecture: standalone
+  
+  # Override Bitnami security contexts for OpenShift
+  master:
+    podSecurityContext:
+      enabled: true
+      runAsNonRoot: true
+    containerSecurityContext:
+      enabled: true
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: false
+      capabilities:
+        drop:
+          - ALL
+
+elasticsearch:
+  enabled: false
+
+# External services configuration for OpenShift
+externalServices:
+  # HTTPS Elasticsearch connection string - ES requires HTTPS
+  elasticsearchConnectionString: "https://clearml-elasticsearch-es-http.clearml.svc.cluster.local:9200"
+
+# API Server configurations
+apiserver:
+  enabled: true
+  
+  # Use ClusterIP for internal communication
+  service:
+    type: ClusterIP
+    port: 8008
+  
+  # Security context for restricted SCC  
+  podSecurityContext:
+    runAsNonRoot: true
+    # Remove fsGroup - let OpenShift assign based on namespace UID range
+  containerSecurityContext:
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
+  
+  # Volume configuration - using init container approach
+  additionalVolumes:
+    - name: apiserver-logs
+      emptyDir: {}
+    - name: apiserver-errors
+      emptyDir: {}
+    - name: writable-cache
+      emptyDir: {}
+  
+  # Volume mount configuration
+  additionalVolumeMounts:
+    - name: apiserver-logs
+      mountPath: /var/log/clearml
+    - name: apiserver-errors
+      mountPath: /opt/clearml/apiserver/apierrors/errors
+    - name: writable-cache
+      mountPath: /tmp/clearml-cache
+  
+  # Extra environment variables for Elasticsearch connections - HTTPS with comprehensive SSL bypass
+  extraEnvs:
+    - name: CLEARML__HOSTS__ELASTIC__WORKERS__HOSTS
+      value: "[{\"host\":\"clearml-elasticsearch-es-http.clearml.svc.cluster.local\",\"port\":9200,\"scheme\":\"https\",\"use_ssl\":true}]"
+    - name: CLEARML__HOSTS__ELASTIC__EVENTS__HOSTS
+      value: "[{\"host\":\"clearml-elasticsearch-es-http.clearml.svc.cluster.local\",\"port\":9200,\"scheme\":\"https\",\"use_ssl\":true}]"
+    - name: CLEARML__HOSTS__ELASTIC__DATASETS__HOSTS
+      value: "[{\"host\":\"clearml-elasticsearch-es-http.clearml.svc.cluster.local\",\"port\":9200,\"scheme\":\"https\",\"use_ssl\":true}]"
+    - name: CLEARML__HOSTS__ELASTIC__LOGS__HOSTS
+      value: "[{\"host\":\"clearml-elasticsearch-es-http.clearml.svc.cluster.local\",\"port\":9200,\"scheme\":\"https\",\"use_ssl\":true}]"
+    # Authentication for Elasticsearch
+    - name: ELASTIC_USER
+      value: "elastic"
+    - name: ELASTIC_PASSWORD
+      value: "Zs23XJ2F8125Hs4hUsZ6EA0g"
+    - name: CLEARML_CACHE_FILE
+      value: "/tmp/clearml-cache/_cache.json"
+    # Comprehensive SSL verification bypass
+    - name: PYTHONHTTPSVERIFY
+      value: "0"
+    - name: REQUESTS_CA_BUNDLE
+      value: ""
+    - name: CURL_CA_BUNDLE
+      value: ""
+    - name: SSL_VERIFY
+      value: "false"
+    - name: URLLIB3_DISABLE_WARNINGS
+      value: "1"
+    # Elasticsearch specific SSL settings
+    - name: CLEARML__HOSTS__ELASTIC__VERIFY_CERTS
+      value: "false"
+    - name: CLEARML__HOSTS__ELASTIC__SSL_SHOW_WARN
+      value: "false"
+
+# Apply the same volume configurations to other components that need it
+clearml:
+  fileserver:
+    service:
+      type: ClusterIP
+    podSecurityContext:
+      runAsNonRoot: true
+    containerSecurityContext:
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: false
+      capabilities:
+        drop:
+          - ALL
+    # Add volume mounts for fileserver writable directories
+    additionalVolumes:
+      - name: fileserver-logs
+        emptyDir: {}
+      - name: fileserver-data
+        emptyDir: {}
+    additionalVolumeMounts:
+      - name: fileserver-logs
+        mountPath: /var/log/clearml
+      - name: fileserver-data
+        mountPath: /mnt/fileserver
+
+  webserver:
+    service:
+      type: ClusterIP
+    podSecurityContext:
+      runAsNonRoot: true
+    containerSecurityContext:
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: false
+      capabilities:
+        drop:
+          - ALL
+    # Add volume mounts for webserver writable directories  
+    additionalVolumes:
+      - name: webserver-logs
+        emptyDir: {}
+      - name: webserver-tmp
+        emptyDir: {}
+    additionalVolumeMounts:
+      - name: webserver-logs
+        mountPath: /var/log/clearml
+      - name: webserver-tmp
+        mountPath: /tmp
+
+# Web files copy job configuration
+webFiles:
+  copyJob:
+    enabled: true
+    image: allegroai/clearml:1.16.2-426 

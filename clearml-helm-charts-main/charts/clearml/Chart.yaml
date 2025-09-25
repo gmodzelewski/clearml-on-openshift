@@ -1,0 +1,33 @@
+apiVersion: v2
+name: clearml
+description: MLOps platform
+type: application
+version: "7.14.6"
+appVersion: "2.0"
+kubeVersion: ">= 1.21.0-0"
+home: https://clear.ml
+icon: https://raw.githubusercontent.com/clearml/clearml/master/docs/clearml-logo.svg
+sources:
+  - https://github.com/clearml/clearml-helm-charts
+  - https://github.com/clearml/clearml
+maintainers:
+  - name: filippo-clearml
+    url: https://github.com/filippo-clearml
+keywords:
+  - clearml
+  - "machine learning"
+  - mlops
+dependencies:
+  - name: redis
+    version: "17.8.3"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: redis.enabled
+  - name: mongodb
+    version: "13.18.5"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: mongodb.enabled
+  # Elasticsearch dependency removed for OpenShift unprivileged deployment
+annotations:
+  artifacthub.io/changes: |
+    - kind: added
+      description: "extraEnvs to apiserver-asyncdelete deployment"

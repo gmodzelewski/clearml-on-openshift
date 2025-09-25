@@ -1,0 +1,602 @@
+# -- Global parameters section
+global:
+  # -- Images registry
+  imageRegistry: "docker.io"
+
+# -- Container registry configuration
+imageCredentials:
+  # -- Use private authentication mode
+  enabled: false
+  # -- If this is set, chart will not generate a secret but will use what is defined here
+  existingSecret: ""
+  # -- Registry name
+  registry: docker.io
+  # -- Registry username
+  username: someone
+  # -- Registry password
+  password: pwd
+  # -- Email
+  email: someone@host.com
+
+# -- ClearMl generic configurations
+clearml:
+  # -- Name fo the UI cookie
+  cookieName: "clearml-token-k8s"
+  # -- Cookie domain to be left empty if not exposed with an ingress
+  cookieDomain: ""
+  # -- Company name
+  defaultCompany: "d1bd92a3b039400cbafc60a7a5b1e52b"
+  # -- Api Server basic auth key
+  apiserverKey: GGS9F4M6XB2DXJ5AFT9F
+  # -- Api Server basic auth secret
+  apiserverSecret: 2oGujVFhPfaozhpuz2GzQfA5OyxmMsR3WVJpsCR5hrgHFs20PO
+  # -- File Server basic auth key
+  fileserverKey: XXCRJ123CEE2KSQ068WO
+  # -- File Server basic auth secret
+  fileserverSecret: YIy8EVAC7QCT4FtgitxAQGyW7xRHDZ4jpYlTE7HKiscpORl1hG
+  # -- Readiness probe basic auth key
+  readinessprobeKey: GK4PRTVT3706T25K6BA1
+  # -- Readiness probe basic auth secret
+  readinessprobeSecret: ymLh1ok5k5xNUQfS944Xdx9xjf0wueokqKM2dMZfHuH9ayItG2
+  # -- Secure Auth secret
+  secureAuthTokenSecret: ymLh1ok5k5xNUQfS944Xdx9xjf0wueokqKM2dMZfHuH9ayItG2
+  # -- Test Server basic auth key
+  testUserKey: "ENP39EQM4SLACGD5FXB7"
+  # -- Test File Server basic auth secret
+  testUserSecret: "lPcm0imbcBZ8mwgO7tpadutiS3gnJD05x9j7afwXPS35IKbpiQ"
+  # -- Override the API Urls displayed when showing an example of the SDK's clearml.conf configuration
+  clientConfigurationApiUrl: ""
+  # -- Override the Files Urls displayed when showing an example of the SDK's clearml.conf configuration
+  clientConfigurationFilesUrl: ""
+  # -- Pass Clearml secrets using an existing secret
+  # must contain the keys: apiserver_key, apiserver_secret, secure_auth_token_secret, test_user_key, test_user_secret
+  existingSecret: ""
+
+# -- Api Server configurations
+apiserver:
+  # -- Enable/Disable component deployment
+  enabled: true
+  # -- Add the provided map to the annotations for the Deployment resource created by this chart.
+  deploymentAnnotations:
+  # -- Enable/Disable example data load
+  prepopulateEnabled: true
+  # -- The default serviceAccountName to be used
+  serviceAccountName: clearml
+  # -- Add the provided map to the annotations for the ServiceAccount resource created by this chart.
+  serviceAccountAnnotations: {}
+  # -- Api Server image configuration
+  image:
+    registry: ""
+    repository: "allegroai/clearml"
+    pullPolicy: IfNotPresent
+    tag: "2.0.0-613"
+  # -- Api Server internal service configuration
+  service:
+    # -- specific annotation for Api Server service
+    annotations: {}
+    type: NodePort
+    port: 8008
+    # -- If service.type set to NodePort, this will be set to service's nodePort field.
+    # If service.type is set to others, this field will be ignored
+    nodePort: 30008
+  # -- Api Server number of pods
+  replicaCount: 1
+  # -- Api Server resources per initContainers pod
+  initContainers:
+    resources:
+      requests:
+        cpu: 10m
+        memory: 64Mi
+      limits:
+        cpu: 10m
+        memory: 64Mi
+  # -- Ingress configuration for Api Server component
+  ingress:
+    # -- Enable/Disable ingress
+    enabled: false
+    # -- ClassName (must be defined if no default ingressClassName is available)
+    ingressClassName: ""
+    # -- Ingress hostname domain
+    hostName: "api.clearml.127-0-0-1.nip.io"
+    # -- Reference to secret containing TLS certificate. If set, it enables HTTPS on ingress rule.
+    tlsSecretName: ""
+    # -- Ingress annotations
+    annotations: {}
+    # -- Ingress root path url
+    path: "/"
+  # -- Api Server internal processes configuration
+  processes:
+    # -- Api Server internal listing processes
+    count: 8
+    # -- Api timeout (ms)
+    timeout: 24000
+    # -- Api Server maximum number of concurrent requests
+    maxRequests: 1000
+    # -- Api Server max jitter on api request
+    maxRequestsJitter: 300
+  # -- Api Server extra envrinoment variables
+  extraEnvs: []
+  # -- specific annotation for Api Server pods
+  podAnnotations: {}
+  # -- Api Server resources per pod; these are minimal requirements, it's suggested to increase
+  # these values in production environments
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 2000m
+      memory: 1Gi
+  # -- Api Server nodeselector
+  nodeSelector: {}
+  # -- Api Server tolerations setup
+  tolerations: []
+  # -- Api Server affinity setup
+  affinity: {}
+  # -- Api Server pod level security context
+  podSecurityContext: 
+    runAsNonRoot: true
+    # Remove runAsUser and runAsGroup - let OpenShift assign random UIDs
+    # Remove fsGroup - let OpenShift assign based on namespace UID range
+  # -- Api Server container level security context  
+  containerSecurityContext:
+    runAsNonRoot: true
+    # Remove runAsUser and runAsGroup - let OpenShift assign random UIDs
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
+  # -- reference for files declared in existing ConfigMap will be mounted and read by apiserver (examples in values.yaml)
+  existingAdditionalConfigsConfigMap: ""
+  # -- reference for files declared in existing Secret will be mounted and read by apiserver (examples in values.yaml) if not overridden by existingAdditionalConfigsConfigMap
+  existingAdditionalConfigsSecret: ""
+  # -- files declared in this parameter will be mounted and read by apiserver (examples in values.yaml) if not overridden by existingAdditionalConfigsSecret
+  additionalConfigs: {}
+  #   services.conf: |
+  #     tasks {
+  #       non_responsive_tasks_watchdog {
+  #         # In-progress tasks that haven't been updated for at least 'value' seconds will be stopped by the watchdog
+  #         threshold_sec: 21000
+  #         # Watchdog will sleep for this number of seconds after each cycle
+  #         watch_interval_sec: 900
+  #       }
+  #     }
+  #   apiserver.conf: |
+  #     auth {
+  #       fixed_users {
+  #         enabled: true
+  #         pass_hashed: false
+  #         users: [
+  #           {
+  #             username: "jane"
+  #             password: "12345678"
+  #             name: "Jane Doe"
+  #           },
+  #           {
+  #             username: "john"
+  #             password: "12345678"
+  #             name: "John Doe"
+  #           },
+  #         ]
+  #       }
+  #     }
+  # -- # Defines extra Kubernetes volumes to be attached to the pod.
+  additionalVolumes: {}
+  #  - name: ramdisk
+  #    emptyDir:
+  #      medium: Memory
+  #      sizeLimit: 32Gi
+  # -- Specifies where and how the volumes defined in additionalVolumes.
+  additionalVolumeMounts: {}
+  #  - mountPath: /dev/shm
+  #    name: ramdisk
+  # -- Api Server asyncdelete configurations
+  asyncdelete:
+    # -- Api Server asyncdelete extra environment variables
+    extraEnvs: []
+  # -- API server logs persistence configuration
+  logs:
+    persistence:
+      enabled: false
+      accessModes:
+        - ReadWriteOnce
+      size: 2Gi
+      storageClass: null  # Use default storage class
+  # -- API server errors persistence configuration  
+  errors:
+    persistence:
+      enabled: false
+      accessModes:
+        - ReadWriteOnce
+      size: 1Gi
+      storageClass: null  # Use default storage class
+
+# -- File Server configurations
+fileserver:
+  # -- Enable/Disable component deployment
+  enabled: true
+  # -- Add the provided map to the annotations for the Deployment resource created by this chart.
+  deploymentAnnotations: {}
+  # -- The default serviceAccountName to be used
+  serviceAccountName: clearml
+  # -- Add the provided map to the annotations for the ServiceAccount resource created by this chart.
+  serviceAccountAnnotations: {}
+  # -- File Server image configuration
+  image:
+    registry: ""
+    repository: "allegroai/clearml"
+    pullPolicy: IfNotPresent
+    tag: "2.0.0-613"
+  # -- File Server internal service configuration
+  service:
+    # -- specific annotation for File Server service
+    annotations: {}
+    type: NodePort
+    port: 8081
+    # -- If service.type set to NodePort, this will be set to service's nodePort field.
+    # If service.type is set to others, this field will be ignored
+    nodePort: 30081
+  # -- File Server number of pods
+  replicaCount: 1
+  # -- File Server resources per initContainers pod
+  initContainers:
+    resources:
+      requests:
+        cpu: 10m
+        memory: 64Mi
+      limits:
+        cpu: 10m
+        memory: 64Mi
+  # -- Ingress configuration for File Server component
+  ingress:
+    # -- Enable/Disable ingress
+    enabled: false
+    # -- ClassName (must be defined if no default ingressClassName is available)
+    ingressClassName: ""
+    # -- Ingress hostname domain
+    hostName: "files.clearml.127-0-0-1.nip.io"
+    # -- Reference to secret containing TLS certificate. If set, it enables HTTPS on ingress rule.
+    tlsSecretName: ""
+    # -- Ingress annotations
+    annotations: {}
+    # -- Ingress root path url
+    path: "/"
+  # -- File Server extra envrinoment variables
+  extraEnvs: []
+  # -- specific annotation for File Server pods
+  podAnnotations: {}
+  # -- File Server resources per pod; these are minimal requirements, it's suggested to increase
+  # these values in production environments
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 2000m
+      memory: 1Gi
+  # -- File Server nodeselector
+  nodeSelector: {}
+  # -- File Server tolerations setup
+  tolerations: []
+  # -- File Server affinity setup
+  affinity: {}
+  # -- File Server pod level security context
+  podSecurityContext: 
+    runAsNonRoot: true
+    # Remove runAsUser and runAsGroup - let OpenShift assign random UIDs
+    # Remove fsGroup - let OpenShift assign based on namespace UID range
+  # -- File Server container level security context  
+  containerSecurityContext:
+    runAsNonRoot: true
+    # Remove runAsUser and runAsGroup - let OpenShift assign random UIDs
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
+  # -- File server persistence settings
+  storage:
+    # -- If set to false no PVC is created and emptyDir is used
+    enabled: true
+    data:
+      # -- If set, it uses an already existing PVC instead of dynamic provisioning
+      existingPVC: ""
+      # -- Storage class (use default if empty)
+      class: ""
+      # -- Access mode (must be ReadWriteMany if fileserver replica > 1)
+      accessMode: ReadWriteOnce
+      size: 50Gi
+  # -- # Defines extra Kubernetes volumes to be attached to the pod.
+  additionalVolumes: {}
+  #  - name: ramdisk
+  #    emptyDir:
+  #      medium: Memory
+  #      sizeLimit: 32Gi
+  # -- Specifies where and how the volumes defined in additionalVolumes.
+  additionalVolumeMounts: {}
+  #  - mountPath: /dev/shm
+  #    name: ramdisk
+  # -- File Server logs persistence configuration
+  logs:
+    persistence:
+      enabled: false
+      accessModes:
+        - ReadWriteOnce
+      size: 1Gi
+      storageClass: null  # Use default storage class
+
+# -- Web Server configurations
+webserver:
+  # -- Enable/Disable component deployment
+  enabled: true
+  # -- Add the provided map to the annotations for the Deployment resource created by this chart.
+  deploymentAnnotations: {}
+  # -- The default serviceAccountName to be used
+  serviceAccountName: clearml
+  # -- Add the provided map to the annotations for the ServiceAccount resource created by this chart.
+  serviceAccountAnnotations: {}
+  # -- Web Server image configuration
+  image:
+    registry: ""
+    repository: "allegroai/clearml"
+    pullPolicy: IfNotPresent
+    tag: "2.0.0-613"
+  # -- Web Server internal service configuration
+  service:
+    # -- specific annotation for Web Server service
+    annotations: {}
+    type: ClusterIP
+    port: 8080
+    # -- If service.type set to NodePort, this will be set to service's nodePort field.
+    # If service.type is set to others, this field will be ignored
+    nodePort: 30080
+  # -- Web Server number of pods
+  replicaCount: 1
+  # -- Web Server resources per initContainers pod
+  initContainers:
+    resources:
+      requests:
+        cpu: 10m
+        memory: 64Mi
+      limits:
+        cpu: 10m
+        memory: 64Mi
+  # -- Web Server container port (default: 80, use 8080 for OpenShift)
+  containerPort: 80
+  # -- Ingress configuration for Web Server component
+  ingress:
+    # -- Enable/Disable ingress
+    enabled: false
+    # -- ClassName (must be defined if no default ingressClassName is available)
+    ingressClassName: ""
+    # -- Ingress hostname domain
+    hostName: "app.clearml.127-0-0-1.nip.io"
+    # -- Reference to secret containing TLS certificate. If set, it enables HTTPS on ingress rule.
+    tlsSecretName: ""
+    # -- Ingress annotations
+    annotations: {}
+    # -- Ingress root path url
+    path: "/"
+  # -- Web Server extra envrinoment variables
+  extraEnvs: []
+  # -- specific annotation for Web Server pods
+  podAnnotations: {}
+  # -- Web Server resources per pod; these are minimal requirements, it's suggested to increase
+  # these values in production environments
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 2000m
+      memory: 1Gi
+  # -- Web Server nodeselector
+  nodeSelector: {}
+  # -- Web Server tolerations setup
+  tolerations: []
+  # -- Web Server affinity setup
+  affinity: {}
+  # -- Web Server pod level security context
+  podSecurityContext: 
+    runAsNonRoot: true
+    # Remove runAsUser and runAsGroup - let OpenShift assign random UIDs
+    # Remove fsGroup - let OpenShift assign based on namespace UID range
+  # -- Web Server container level security context  
+  containerSecurityContext:
+    runAsNonRoot: true
+    # Remove runAsUser and runAsGroup - let OpenShift assign random UIDs
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
+  # -- Additional specific webserver configurations
+  additionalConfigs: {}
+  # -- # Defines extra Kubernetes volumes to be attached to the pod.
+  additionalVolumes: {}
+  #  - name: ramdisk
+  #    emptyDir:
+  #      medium: Memory
+  #      sizeLimit: 32Gi
+  # -- Specifies where and how the volumes defined in additionalVolumes.
+  additionalVolumeMounts: {}
+  #  - mountPath: /dev/shm
+  #    name: ramdisk
+  # -- Web Server logs persistence configuration
+  logs:
+    persistence:
+      enabled: false
+      accessModes:
+        - ReadWriteOnce
+      size: 1Gi
+      storageClass: null  # Use default storage class
+  # -- Web Server config persistence configuration
+  config:
+    persistence:
+      enabled: false
+      accessModes:
+        - ReadWriteOnce
+      size: 1Gi
+      storageClass: null  # Use default storage class
+  # -- Web Server nginx persistence configuration
+  nginx:
+    persistence:
+      enabled: false
+      accessModes:
+        - ReadWriteOnce
+      size: 1Gi
+      storageClass: null  # Use default storage class
+  # -- Web Server lib persistence configuration
+  lib:
+    persistence:
+      enabled: false
+      accessModes:
+        - ReadWriteOnce
+      size: 1Gi
+      storageClass: null  # Use default storage class
+  # -- Web Server web files copy job configuration (needed for OpenShift)
+  webFiles:
+    copyJob:
+      enabled: false
+      helperImage: "busybox:1.35"
+      backoffLimit: 3
+      securityContext:
+        runAsUser: null  # Let OpenShift assign
+        runAsGroup: null  # Let OpenShift assign
+        fsGroup: null    # Let OpenShift assign
+      resources:
+        extractFiles:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+        copyToPvc:
+          requests:
+            memory: "32Mi"
+            cpu: "50m"
+          limits:
+            memory: "64Mi"
+            cpu: "100m"
+
+# -- Definition of external services to use if not enabled as dependency charts here
+externalServices:
+  elasticsearchConnectionString: "[{\"host\":\"your-actual-elasticsearch-host\",\"port\":9200}]"
+  # -- Existing MongoDB connection string for BACKEND to use if mongodb.enabled is false (example in values.yaml)
+  mongodbConnectionStringAuth: "mongodb://mongodb_hostname:27017/auth"
+  # -- Existing MongoDB connection string for AUTH to use if mongodb.enabled is false (example in values.yaml)
+  mongodbConnectionStringBackend: "mongodb://mongodb_hostnamehostname:27017/backend"
+  # -- Existing Redis Hostname to use if redis.enabled is false (example in values.yaml)
+  redisHost: "redis_hostname"
+  # -- Existing Redis Port to use if redis.enabled is false
+  redisPort: 6379
+
+# -- Configuration from https://github.com/bitnami/charts/blob/master/bitnami/redis/values.yaml
+redis:
+  enabled: true
+  auth:
+    enabled: false
+  databaseNumber: 0
+  master:
+    name: "{{ .Release.Name }}-redis-master"
+    port: 6379
+    persistence:
+      enabled: true
+      accessModes:
+        - ReadWriteOnce
+      size: 5Gi
+      ## If undefined (the default) or set to null, no storageClassName spec is set, choosing the default provisioner
+      storageClass: null
+    # OpenShift security configuration - comprehensive overrides
+    containerSecurityContext:
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+    podSecurityContext:
+      runAsNonRoot: true
+      # Remove explicit runAsUser - let OpenShift assign random UID
+      # Remove fsGroup - let OpenShift assign based on namespace UID range
+    # Disable seccomp annotations that are forbidden in OpenShift
+    podAnnotations: {}
+  architecture: standalone
+  # Disable metrics to avoid additional security contexts
+  metrics:
+    enabled: false
+  # Common configuration to disable protected mode
+  commonConfiguration: |-
+    # Disable protected mode (requires auth)
+    protected-mode no
+
+# -- Configuration from https://github.com/bitnami/charts/blob/master/bitnami/mongodb/values.yaml
+mongodb:
+  enabled: true
+  updateStrategy:
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+    type: RollingUpdate
+  architecture: standalone
+  auth:
+    enabled: false
+  replicaCount: 1
+  persistence:
+    enabled: true
+    accessModes:
+      - ReadWriteOnce
+    size: 50Gi
+    ## If undefined (the default) or set to null, no storageClassName spec is set, choosing the default provisioner
+    storageClass: null
+  # OpenShift security configuration - comprehensive Bitnami overrides
+  image:
+    debug: false
+  # Global security context overrides using Bitnami chart structure
+  podSecurityContext:
+    enabled: true
+    fsGroup: null                # Explicitly disable fsGroup  
+    runAsNonRoot: true
+    runAsUser: null              # Let OpenShift assign
+    runAsGroup: null             # Let OpenShift assign
+    sysctls: []                  # No sysctls
+  containerSecurityContext:
+    enabled: true
+    runAsNonRoot: true
+    runAsUser: null              # Let OpenShift assign
+    runAsGroup: null             # Let OpenShift assign
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
+    seccompProfile: {}           # Disable seccomp profile
+  # Disable seccomp annotations that are forbidden in OpenShift  
+  podAnnotations: {}
+  # Disable features that might add security contexts
+  metrics:
+    enabled: false
+  serviceMonitor:
+    enabled: false
+  networkPolicy:
+    enabled: false
+  # Volume permissions - disable init container that might set permissions
+  volumePermissions:
+    enabled: false
+
+# -- Configuration from https://github.com/elastic/helm-charts/blob/7.16/elasticsearch/values.yaml
+elasticsearch:
+  enabled: false  # Disable embedded Elasticsearch
+  # All other elasticsearch config can be removed or commented out
+  # httpPort: 9200
+  # roles:
+  #   master: "true"
+  #   ingest: "true"
+  #   data: "true"
+  #   remote_cluster_client: "true"
+  # ... rest commented out
+
+# For external Elasticsearch, uncomment and configure:
+# -- Existing ElasticSearch connectionstring if elasticsearch.enabled is false (example in values.yaml)
+elasticsearchConnectionString: "[{\"host\":\"your-external-elasticsearch-host\",\"port\":9200}]"

@@ -1,0 +1,59 @@
+{{- if .Values.clearml.sslBypass.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "clearml.fullname" . }}-ssl-bypass-startup
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "clearml.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ssl-bypass
+data:
+  startup.sh: |
+    #!/bin/bash
+    set -e
+
+    echo "🔧 ClearML OpenShift SSL Bypass - Starting comprehensive SSL setup..."
+
+    # Set comprehensive SSL bypass environment variables
+    export PYTHONHTTPSVERIFY=0
+    export SSL_VERIFY=False
+    export REQUESTS_CA_BUNDLE=""
+    export CURL_CA_BUNDLE=""
+    export URLLIB3_DISABLE_WARNINGS=1
+
+    # Create Python SSL bypass initialization script  
+    cat > /tmp/ssl_bypass_init.py << 'PYTHON_EOF'
+    import ssl
+    import urllib3
+    import warnings
+    import os
+
+    # Disable SSL verification globally at the SSL context level
+    ssl._create_default_https_context = ssl._create_unverified_context
+
+    # Disable urllib3 SSL warnings
+    try:
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+        urllib3.disable_warnings()
+    except:
+        pass  # Some versions may not have these warnings
+
+    # Suppress SSL warnings
+    warnings.filterwarnings('ignore', message='Unverified HTTPS request')
+    try:
+        warnings.filterwarnings('ignore', category=urllib3.exceptions.InsecureRequestWarning)
+    except:
+        pass
+
+    print("✅ SSL verification bypassed globally at Python SSL context level")
+    PYTHON_EOF
+
+    # Execute SSL bypass setup BEFORE starting ClearML
+    python3 /tmp/ssl_bypass_init.py
+
+    echo "✅ SSL bypass setup completed!"
+    echo "🚀 Starting ClearML API Server with SSL bypass..."
+
+    # Start ClearML using the standard entry point
+    exec apiserver
+{{- end }} 

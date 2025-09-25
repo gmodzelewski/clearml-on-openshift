@@ -1,0 +1,76 @@
+{{- if .Values.clearml.apiserver.openshift.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "clearml.fullname" . }}-apiserver
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "clearml.labels" . | nindent 4 }}
+    app.kubernetes.io/component: apiserver
+spec:
+  template:
+    spec:
+      {{- if .Values.clearml.sslBypass.enabled }}
+      volumes:
+        - name: ssl-bypass-startup
+          configMap:
+            name: {{ include "clearml.fullname" . }}-ssl-bypass-startup
+            defaultMode: 493
+        {{- if .Values.clearml.apiserver.openshift.volumes }}
+        {{- toYaml .Values.clearml.apiserver.openshift.volumes | nindent 8 }}
+        {{- end }}
+      {{- end }}
+      
+      initContainers:
+        {{- if .Values.clearml.apiserver.openshift.initContainers.cachePermissionFix.enabled }}
+        - name: fix-cache-permissions
+          image: {{ .Values.clearml.apiserver.openshift.initContainers.cachePermissionFix.image }}
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              echo "🔧 Init: Creating writable cache directory..."
+              mkdir -p /tmp/clearml-cache
+              touch /tmp/clearml-cache/_cache.json
+              chmod 666 /tmp/clearml-cache/_cache.json
+              echo "✅ Cache permissions fixed!"
+          volumeMounts:
+            - name: writable-cache
+              mountPath: /tmp/clearml-cache
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+        {{- end }}
+      
+      containers:
+        - name: clearml-apiserver
+          {{- if .Values.clearml.sslBypass.enabled }}
+          command: ["/ssl-bypass-startup/startup.sh"]
+          args: []
+          volumeMounts:
+            - name: ssl-bypass-startup
+              mountPath: /ssl-bypass-startup
+              readOnly: true
+            {{- if .Values.clearml.apiserver.openshift.volumeMounts }}
+            {{- toYaml .Values.clearml.apiserver.openshift.volumeMounts | nindent 12 }}
+            {{- end }}
+          {{- end }}
+          
+          env:
+            {{- if .Values.clearml.apiserver.openshift.env }}
+            {{- range $key, $value := .Values.clearml.apiserver.openshift.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            {{- end }}
+          
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+{{- end }} 

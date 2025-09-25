@@ -1,0 +1,115 @@
+# Simplified OpenShift values for ClearML - focus on getting it running first
+agentGroups:
+  - name: "default"
+    queues: "default"
+    replicaCount: 0
+
+# Disable embedded services - use external
+mongodb:
+  enabled: false
+
+redis:
+  enabled: false  
+
+elasticsearch:
+  enabled: false
+
+# External services configuration for OpenShift
+externalServices:
+  # Properly configured Elasticsearch connection strings for all ClearML components
+  elasticsearchConnectionString: "[{\"host\":\"clearml-elasticsearch-es-http.clearml.svc.cluster.local\",\"port\":9200,\"scheme\":\"https\",\"http_auth\":[\"elastic\",\"Zs23XJ2F8125Hs4hUsZ6EA0g\"],\"verify_certs\":false}]"
+
+# ClearML components configured for OpenShift restricted SCC - SIMPLIFIED
+clearml:
+  apiserver:
+    # Use ClusterIP for internal communication
+    service:
+      type: ClusterIP
+      port: 8008
+    
+    # Security context for restricted SCC  
+    podSecurityContext:
+      runAsNonRoot: true
+    containerSecurityContext:
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: false
+      capabilities:
+        drop:
+          - ALL
+    
+    # Environment variables for Elasticsearch connections - all pointing to same cluster
+    environment:
+      CLEARML__HOSTS__ELASTIC__WORKERS__HOSTS:
+        value: "[{\"host\":\"clearml-elasticsearch-es-http.clearml.svc.cluster.local\",\"port\":9200,\"scheme\":\"https\",\"http_auth\":[\"elastic\",\"Zs23XJ2F8125Hs4hUsZ6EA0g\"],\"verify_certs\":false}]"
+      CLEARML__HOSTS__ELASTIC__EVENTS__HOSTS:
+        value: "[{\"host\":\"clearml-elasticsearch-es-http.clearml.svc.cluster.local\",\"port\":9200,\"scheme\":\"https\",\"http_auth\":[\"elastic\",\"Zs23XJ2F8125Hs4hUsZ6EA0g\"],\"verify_certs\":false}]"
+      CLEARML__HOSTS__ELASTIC__DATASETS__HOSTS:
+        value: "[{\"host\":\"clearml-elasticsearch-es-http.clearml.svc.cluster.local\",\"port\":9200,\"scheme\":\"https\",\"http_auth\":[\"elastic\",\"Zs23XJ2F8125Hs4hUsZ6EA0g\"],\"verify_certs\":false}]"
+      CLEARML__HOSTS__ELASTIC__LOGS__HOSTS:
+        value: "[{\"host\":\"clearml-elasticsearch-es-http.clearml.svc.cluster.local\",\"port\":9200,\"scheme\":\"https\",\"http_auth\":[\"elastic\",\"Zs23XJ2F8125Hs4hUsZ6EA0g\"],\"verify_certs\":false}]"
+
+  fileserver:
+    service:
+      type: ClusterIP
+      port: 8081
+    podSecurityContext:
+      runAsNonRoot: true
+    containerSecurityContext:
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: false
+      capabilities:
+        drop:
+          - ALL
+
+  webserver:
+    service:
+      type: ClusterIP
+      port: 8080
+    podSecurityContext:
+      runAsNonRoot: true
+    containerSecurityContext:
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: false
+      capabilities:
+        drop:
+          - ALL
+
+# External MongoDB configuration
+clearml-mongodb:
+  enabled: true
+  auth:
+    enabled: false
+  architecture: standalone
+  podSecurityContext:
+    enabled: true
+    runAsNonRoot: true
+  containerSecurityContext:
+    enabled: true
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
+
+# External Redis configuration  
+clearml-redis:
+  enabled: true
+  auth:
+    enabled: false
+  architecture: standalone
+  master:
+    podSecurityContext:
+      enabled: true
+      runAsNonRoot: true
+    containerSecurityContext:
+      enabled: true
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: false
+      capabilities:
+        drop:
+          - ALL 

@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clearml-cache-fix-script
+  namespace: {{ .Release.Namespace }}
+data:
+  cache-fix.sh: |
+    #!/bin/bash
+    set -e
+    echo "ClearML Cache Fix Script Starting..."
+    
+    # Create writable cache directory
+    mkdir -p /tmp/clearml-cache
+    touch /tmp/clearml-cache/_cache.json
+    chmod 777 /tmp/clearml-cache
+    chmod 666 /tmp/clearml-cache/_cache.json
+    
+    # Create the schema directory if it doesn't exist
+    mkdir -p /opt/clearml/apiserver/schema/services
+    
+    # Create symbolic link from original location to writable location
+    ln -sf /tmp/clearml-cache/_cache.json /opt/clearml/apiserver/schema/services/_cache.json
+    
+    echo "Cache fix completed successfully!"
+    echo "Starting ClearML API Server..."
+    
+    # Start the original API server
+    exec python3 -m apiserver.server 

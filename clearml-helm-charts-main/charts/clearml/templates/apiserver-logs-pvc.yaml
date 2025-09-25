@@ -1,0 +1,24 @@
+{{- if .Values.apiserver.logs.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "apiserver.referenceName" . }}-logs
+  labels:
+    {{- include "clearml.labels" . | nindent 4 }}
+    app.kubernetes.io/component: apiserver
+spec:
+  accessModes:
+    {{- range .Values.apiserver.logs.persistence.accessModes }}
+    - {{ . | quote }}
+    {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.apiserver.logs.persistence.size | quote }}
+  {{- if .Values.apiserver.logs.persistence.storageClass }}
+  {{- if (eq "-" .Values.apiserver.logs.persistence.storageClass) }}
+  storageClassName: ""
+  {{- else }}
+  storageClassName: "{{ .Values.apiserver.logs.persistence.storageClass }}"
+  {{- end }}
+  {{- end }}
+{{- end }} 

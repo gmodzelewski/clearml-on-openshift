@@ -1,0 +1,24 @@
+{{- if .Values.fileserver.logs.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "fileserver.referenceName" . }}-logs
+  labels:
+    {{- include "clearml.labels" . | nindent 4 }}
+    app.kubernetes.io/component: fileserver
+spec:
+  accessModes:
+    {{- range .Values.fileserver.logs.persistence.accessModes }}
+    - {{ . | quote }}
+    {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.fileserver.logs.persistence.size | quote }}
+  {{- if .Values.fileserver.logs.persistence.storageClass }}
+  {{- if (eq "-" .Values.fileserver.logs.persistence.storageClass) }}
+  storageClassName: ""
+  {{- else }}
+  storageClassName: "{{ .Values.fileserver.logs.persistence.storageClass }}"
+  {{- end }}
+  {{- end }}
+{{- end }} 

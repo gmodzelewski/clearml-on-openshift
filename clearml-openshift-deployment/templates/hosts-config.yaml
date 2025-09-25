@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clearml-hosts-config
+  namespace: {{ .Release.Namespace }}
+data:
+  hosts.conf: |
+    fileserver = "http://clearml-fileserver:8081"
+
+    elastic {
+      events {
+        hosts: [{host: "clearml-elasticsearch-es-http.clearml.svc.cluster.local", port: 9200, scheme: "https"}]
+        args {
+          timeout: 60
+          max_retries: 3
+          retry_on_timeout: true
+        }
+        index_version: "1"
+      }
+
+      workers {
+        hosts: [{host: "clearml-elasticsearch-es-http.clearml.svc.cluster.local", port: 9200, scheme: "https"}]
+        args {
+          timeout: 60
+          max_retries: 3
+          retry_on_timeout: true
+        }
+        index_version: "1"
+      }
+
+      datasets {
+        hosts: [{host: "clearml-elasticsearch-es-http.clearml.svc.cluster.local", port: 9200, scheme: "https"}]
+        args {
+          timeout: 60
+          max_retries: 3
+          retry_on_timeout: true
+        }
+        index_version: "1"
+      }
+
+      logs {
+        hosts: [{host: "clearml-elasticsearch-es-http.clearml.svc.cluster.local", port: 9200, scheme: "https"}]
+        args {
+          timeout: 60
+          max_retries: 3
+          retry_on_timeout: true
+        }
+        index_version: "1"
+      }
+    }
+
+    mongo {
+      backend {
+        host: "mongodb://clearml-mongodb:27017/backend"
+      }
+      auth {
+        host: "mongodb://clearml-mongodb:27017/auth"
+      }
+    }
+
+    redis {
+      apiserver {
+          host: "clearml-redis-master"
+          port: 6379
+          db: 0
+      }
+      workers {
+        host: "clearml-redis-master"
+        port: 6379
+        db: 4
+      }
+    } 

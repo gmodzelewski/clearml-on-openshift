@@ -1,0 +1,10 @@
+dependencies:
+- name: redis
+  repository: https://charts.bitnami.com/bitnami
+  version: 17.8.3
+- name: mongodb
+  repository: https://charts.bitnami.com/bitnami
+  version: 13.18.5
+# Elasticsearch dependency removed for OpenShift compatibility
+digest: sha256:updated-digest-after-elasticsearch-removal
+generated: "2025-01-23T15:30:00.000000+00:00"

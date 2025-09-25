@@ -1,0 +1,145 @@
+# ClearML OpenShift Configuration Template
+# This file consolidates all OpenShift-specific configurations developed during deployment
+
+# Global OpenShift settings
+openshift:
+  enabled: true
+  namespace: clearml
+  securityContextConstraints: restricted-v2
+
+# SSL Bypass Configuration
+clearml:
+  sslBypass:
+    enabled: true
+    description: "Enables comprehensive SSL bypass for self-signed Elasticsearch certificates"
+
+  # External services configuration for OpenShift
+  externalServices:
+    # HTTPS Elasticsearch connection string - ES requires HTTPS
+    elasticsearchConnectionString: "https://clearml-elasticsearch-es-http.clearml.svc.cluster.local:9200"
+
+  # API Server OpenShift-specific configurations
+  apiserver:
+    enabled: true
+    openshift:
+      enabled: true
+      
+      # Security context for restricted SCC  
+      podSecurityContext:
+        runAsNonRoot: true
+        # Remove fsGroup - let OpenShift assign based on namespace UID range
+      
+      containerSecurityContext:
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: false
+        capabilities:
+          drop:
+            - ALL
+      
+      # Service configuration
+      service:
+        type: ClusterIP
+        port: 8008
+      
+      # Volume configuration for OpenShift
+      volumes:
+        - name: apiserver-logs
+          emptyDir: {}
+        - name: apiserver-errors
+          emptyDir: {}
+        - name: writable-cache
+          emptyDir: {}
+      
+      # Volume mount configuration
+      volumeMounts:
+        - name: apiserver-logs
+          mountPath: /var/log/clearml
+        - name: apiserver-errors
+          mountPath: /opt/clearml/apiserver/apierrors/errors
+        - name: writable-cache
+          mountPath: /tmp/clearml-cache
+      
+      # Init containers configuration
+      initContainers:
+        cachePermissionFix:
+          enabled: true
+          image: "docker.io/allegroai/clearml:2.0.0-613"
+      
+      # Environment variables optimized for OpenShift and Elasticsearch
+      env:
+        # Elasticsearch connections - HTTPS with comprehensive SSL bypass
+        CLEARML__HOSTS__ELASTIC__WORKERS__HOSTS: "[{\"host\":\"clearml-elasticsearch-es-http.clearml.svc.cluster.local\",\"port\":9200,\"scheme\":\"https\",\"use_ssl\":true}]"
+        CLEARML__HOSTS__ELASTIC__EVENTS__HOSTS: "[{\"host\":\"clearml-elasticsearch-es-http.clearml.svc.cluster.local\",\"port\":9200,\"scheme\":\"https\",\"use_ssl\":true}]"
+        CLEARML__HOSTS__ELASTIC__DATASETS__HOSTS: "[{\"host\":\"clearml-elasticsearch-es-http.clearml.svc.cluster.local\",\"port\":9200,\"scheme\":\"https\",\"use_ssl\":true}]"
+        CLEARML__HOSTS__ELASTIC__LOGS__HOSTS: "[{\"host\":\"clearml-elasticsearch-es-http.clearml.svc.cluster.local\",\"port\":9200,\"scheme\":\"https\",\"use_ssl\":true}]"
+        
+        # Authentication for Elasticsearch
+        ELASTIC_USER: "elastic"
+        ELASTIC_PASSWORD: "Zs23XJ2F8125Hs4hUsZ6EA0g"
+        
+        # Cache configuration
+        CLEARML_CACHE_FILE: "/tmp/clearml-cache/_cache.json"
+        
+        # Comprehensive SSL verification bypass
+        PYTHONHTTPSVERIFY: "0"
+        REQUESTS_CA_BUNDLE: ""
+        CURL_CA_BUNDLE: ""
+        SSL_VERIFY: "false"
+        URLLIB3_DISABLE_WARNINGS: "1"
+        
+        # Elasticsearch specific SSL settings
+        CLEARML__HOSTS__ELASTIC__VERIFY_CERTS: "false"
+        CLEARML__HOSTS__ELASTIC__SSL_SHOW_WARN: "false"
+
+  # Fileserver OpenShift configurations
+  fileserver:
+    openshift:
+      enabled: true
+      service:
+        type: ClusterIP
+      podSecurityContext:
+        runAsNonRoot: true
+      containerSecurityContext:
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: false
+        capabilities:
+          drop:
+            - ALL
+      volumes:
+        - name: fileserver-logs
+          emptyDir: {}
+        - name: fileserver-data
+          emptyDir: {}
+      volumeMounts:
+        - name: fileserver-logs
+          mountPath: /var/log/clearml
+        - name: fileserver-data
+          mountPath: /mnt/fileserver
+
+  # Webserver OpenShift configurations
+  webserver:
+    openshift:
+      enabled: true
+      service:
+        type: ClusterIP
+      podSecurityContext:
+        runAsNonRoot: true
+      containerSecurityContext:
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: false
+        capabilities:
+          drop:
+            - ALL
+      volumes:
+        - name: webserver-logs
+          emptyDir: {}
+        - name: webserver-tmp
+          emptyDir: {}
+      volumeMounts:
+        - name: webserver-logs
+          mountPath: /var/log/clearml
+        - name: webserver-tmp
+          mountPath: /tmp 
