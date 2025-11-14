@@ -1,0 +1,214 @@
+# ClearML OpenShift Configuration with Root Access
+# This overrides the default OpenShift values to allow root containers
+
+# Disable agents 
+agentGroups:
+  - name: "default"
+    queues: "default"
+    replicaCount: 0
+
+# Enable external services as dependencies
+mongodb:
+  enabled: true
+  auth:
+    enabled: false
+  architecture: standalone
+  
+  # Override Bitnami security contexts for OpenShift
+  podSecurityContext:
+    enabled: true
+    runAsNonRoot: true
+    runAsUser: 1001050000
+    fsGroup: 1001050000
+  containerSecurityContext:
+    enabled: true
+    runAsNonRoot: true
+    runAsUser: 1001050000
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
+
+redis:
+  enabled: true
+  auth:
+    enabled: false
+  architecture: standalone
+  
+  # Override Bitnami security contexts for OpenShift
+  master:
+    podSecurityContext:
+      enabled: true
+      runAsNonRoot: true
+      runAsUser: 1001050000
+      fsGroup: 1001050000
+    containerSecurityContext:
+      enabled: true
+      runAsNonRoot: true
+      runAsUser: 1001050000
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: false
+      capabilities:
+        drop:
+          - ALL
+
+elasticsearch:
+  enabled: false
+
+# External services configuration for OpenShift
+externalServices:
+  # HTTP Elasticsearch connection string - ES runs on HTTP
+  elasticsearchConnectionString: "http://clearml-elasticsearch-es-http.clearml.svc.cluster.local:9200"
+
+# API Server configurations
+apiserver:
+  enabled: true
+  
+  # Use ClusterIP for internal communication
+  service:
+    type: ClusterIP
+    port: 8008
+  
+  # Security context for OpenShift restricted SCC  
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1001050000
+    fsGroup: 1001050000
+  containerSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1001050000
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
+  
+  # Volume configuration - using init container approach
+  additionalVolumes:
+    - name: apiserver-logs
+      emptyDir: {}
+    - name: apiserver-errors
+      emptyDir: {}
+    - name: writable-cache
+      emptyDir: {}
+  
+  # Volume mount configuration
+  additionalVolumeMounts:
+    - name: apiserver-logs
+      mountPath: /var/log/clearml
+    - name: apiserver-errors
+      mountPath: /opt/clearml/apiserver/apierrors/errors
+    - name: writable-cache
+      mountPath: /tmp/clearml-cache
+  
+  # Extra environment variables for Elasticsearch connections - HTTP (no SSL)
+  extraEnvs:
+    - name: CLEARML__HOSTS__ELASTIC__WORKERS__HOSTS
+      value: "[{\"host\":\"clearml-elasticsearch-es-http.clearml.svc.cluster.local\",\"port\":9200,\"scheme\":\"http\"}]"
+    - name: CLEARML__HOSTS__ELASTIC__EVENTS__HOSTS
+      value: "[{\"host\":\"clearml-elasticsearch-es-http.clearml.svc.cluster.local\",\"port\":9200,\"scheme\":\"http\"}]"
+    - name: CLEARML__HOSTS__ELASTIC__DATASETS__HOSTS
+      value: "[{\"host\":\"clearml-elasticsearch-es-http.clearml.svc.cluster.local\",\"port\":9200,\"scheme\":\"http\"}]"
+    - name: CLEARML__HOSTS__ELASTIC__LOGS__HOSTS
+      value: "[{\"host\":\"clearml-elasticsearch-es-http.clearml.svc.cluster.local\",\"port\":9200,\"scheme\":\"http\"}]"
+    # Authentication for Elasticsearch
+    - name: ELASTIC_USER
+      value: "elastic"
+    - name: ELASTIC_PASSWORD
+      value: "Zs23XJ2F8125Hs4hUsZ6EA0g"
+    - name: CLEARML_CACHE_FILE
+      value: "/tmp/clearml-cache/_cache.json"
+    # Comprehensive SSL verification bypass
+    - name: PYTHONHTTPSVERIFY
+      value: "0"
+    - name: REQUESTS_CA_BUNDLE
+      value: ""
+    - name: CURL_CA_BUNDLE
+      value: ""
+    - name: SSL_VERIFY
+      value: "false"
+    - name: URLLIB3_DISABLE_WARNINGS
+      value: "1"
+    # Elasticsearch specific SSL settings
+    - name: CLEARML__HOSTS__ELASTIC__VERIFY_CERTS
+      value: "false"
+    - name: CLEARML__HOSTS__ELASTIC__SSL_SHOW_WARN
+      value: "false"
+    # Additional Elasticsearch cluster configuration
+    - name: CLEARML__HOSTS__ELASTIC__CLUSTERS__DEFAULT__HOSTS
+      value: '[{"host":"clearml-elasticsearch-es-http.clearml.svc.cluster.local","port":9200,"scheme":"http"}]'
+    - name: CLEARML__HOSTS__ELASTIC__CLUSTERS__DEFAULT__VERIFY_CERTS
+      value: "false"
+    - name: CLEARML__HOSTS__ELASTIC__CLUSTERS__DEFAULT__SSL_SHOW_WARN
+      value: "false"
+    - name: CLEARML__HOSTS__ELASTIC__CLUSTERS__DEFAULT__ARGS__TIMEOUT
+      value: "60"
+    - name: CLEARML__HOSTS__ELASTIC__CLUSTERS__DEFAULT__ARGS__MAX_RETRIES
+      value: "3"
+    - name: CLEARML__HOSTS__ELASTIC__CLUSTERS__DEFAULT__ARGS__RETRY_ON_TIMEOUT
+      value: "true"
+    - name: CLEARML__HOSTS__ELASTIC__CLUSTERS__DEFAULT__INDEX_VERSION
+      value: "1"
+
+# Apply the same volume configurations to other components that need it
+clearml:
+  fileserver:
+    service:
+      type: ClusterIP
+    podSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 1001050000
+      fsGroup: 1001050000
+    containerSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 1001050000
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: false
+      capabilities:
+        drop:
+          - ALL
+    # Add volume mounts for fileserver writable directories
+    additionalVolumes:
+      - name: fileserver-logs
+        emptyDir: {}
+      - name: fileserver-data
+        emptyDir: {}
+    additionalVolumeMounts:
+      - name: fileserver-logs
+        mountPath: /var/log/clearml
+      - name: fileserver-data
+        mountPath: /mnt/fileserver
+
+  webserver:
+    service:
+      type: ClusterIP
+    podSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 1001050000
+      fsGroup: 1001050000
+    containerSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 1001050000
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: false
+      capabilities:
+        drop:
+          - ALL
+    # Add volume mounts for webserver writable directories  
+    additionalVolumes:
+      - name: webserver-logs
+        emptyDir: {}
+      - name: webserver-tmp
+        emptyDir: {}
+    additionalVolumeMounts:
+      - name: webserver-logs
+        mountPath: /var/log/clearml
+      - name: webserver-tmp
+        mountPath: /tmp
+
+# Web files copy job configuration
+webFiles:
+  copyJob:
+    enabled: true
+    image: allegroai/clearml:1.16.2-426

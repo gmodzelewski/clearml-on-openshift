@@ -1,0 +1,218 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/instance: clearml
+    app.kubernetes.io/name: clearml
+    app.kubernetes.io/version: "2.0"
+  name: clearml-apiserver
+  namespace: clearml
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: clearml-apiserver
+      app.kubernetes.io/name: clearml
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: clearml-apiserver
+        app.kubernetes.io/name: clearml
+    spec:
+      containers:
+      - args:
+        - apiserver
+        env:
+        - name: CLEARML__HOSTS__ELASTIC__WORKERS__HOSTS
+          value: '[{"host":"clearml-elasticsearch-service","port":9200,"scheme":"http"}]'
+        - name: CLEARML__HOSTS__ELASTIC__EVENTS__HOSTS
+          value: '[{"host":"clearml-elasticsearch-service","port":9200,"scheme":"http"}]'
+        - name: CLEARML__HOSTS__ELASTIC__DATASETS__HOSTS
+          value: '[{"host":"clearml-elasticsearch-service","port":9200,"scheme":"http"}]'
+        - name: CLEARML__HOSTS__ELASTIC__LOGS__HOSTS
+          value: '[{"host":"clearml-elasticsearch-service","port":9200,"scheme":"http"}]'
+        - name: CLEARML_MONGODB_SERVICE_CONNECTION_STRING
+          value: mongodb://clearml-mongodb:27017
+        - name: CLEARML_REDIS_SERVICE_HOST
+          value: clearml-redis-master
+        - name: CLEARML_REDIS_SERVICE_PORT
+          value: "6379"
+        - name: CLEARML_CONFIG_PATH
+          value: /opt/clearml/config
+        - name: CLEARML__apiserver__default_company_name
+          value: d1bd92a3b039400cbafc60a7a5b1e52b
+        - name: CLEARML__APISERVER__AUTH__SESSION_AUTH_COOKIE_NAME
+          value: clearml-token-k8s
+        - name: CLEARML__secure__credentials__apiserver__user_key
+          valueFrom:
+            secretKeyRef:
+              key: apiserver_key
+              name: clearml-conf
+        - name: CLEARML__secure__credentials__apiserver__user_secret
+          valueFrom:
+            secretKeyRef:
+              key: apiserver_secret
+              name: clearml-conf
+        - name: CLEARML__secure__auth__token_secret
+          valueFrom:
+            secretKeyRef:
+              key: secure_auth_token_secret
+              name: clearml-conf
+        - name: CLEARML__APISERVER__PRE_POPULATE__ENABLED
+          value: "true"
+        - name: CLEARML__APISERVER__PRE_POPULATE__ZIP_FILES
+          value: /opt/clearml/db-pre-populate
+        - name: CLEARML__SECURE__CREDENTIALS__TESTS__USER_KEY
+          valueFrom:
+            secretKeyRef:
+              key: test_user_key
+              name: clearml-conf
+        - name: CLEARML__SECURE__CREDENTIALS__TESTS__USER_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: test_user_secret
+              name: clearml-conf
+        - name: CLEARML_ENV
+          value: helm-cloud
+        - name: CLEARML__apiserver__elastic__validate
+          value: "false"
+        - name: CLEARML__apiserver__pre_populate
+          value: "false"
+        - name: CLEARML_CACHE_FILE
+          value: /tmp/_cache.json
+        - name: CLEARML__schema__cache_path
+          value: /tmp/_cache.json
+        - name: CLEARML__apiserver__cache_path
+          value: /tmp/_cache.json
+        - name: CLEARML__cache__path
+          value: /tmp/_cache.json
+        - name: CLEARML_SCHEMA_CACHE_PATH
+          value: /tmp/_cache.json
+        - name: PYTHONHTTPSVERIFY
+          value: "0"
+        - name: CLEARML__HOSTS__ELASTIC__VERIFY_CERTS
+          value: "false"
+        - name: CLEARML__HOSTS__ELASTIC__WORKERS__VERIFY_CERTS
+          value: "false"
+        - name: CLEARML__HOSTS__ELASTIC__EVENTS__VERIFY_CERTS
+          value: "false"
+        - name: CLEARML__HOSTS__ELASTIC__DATASETS__VERIFY_CERTS
+          value: "false"
+        - name: CLEARML__HOSTS__ELASTIC__LOGS__VERIFY_CERTS
+          value: "false"
+        - name: CLEARML__HOSTS__ELASTIC__CLUSTERS__VERIFY_CERTS__HOSTS
+          value: '[{"host":"clearml-elasticsearch-service","port":9200,"scheme":"http"}]'
+        - name: CLEARML__HOSTS__ELASTIC__CLUSTERS__VERIFY_CERTS__VERIFY_CERTS
+          value: "false"
+        - name: CLEARML__HOSTS__ELASTIC__CLUSTERS__VERIFY_CERTS__ARGS__TIMEOUT
+          value: "60"
+        - name: CLEARML__HOSTS__ELASTIC__CLUSTERS__VERIFY_CERTS__ARGS__MAX_RETRIES
+          value: "3"
+        - name: CLEARML__HOSTS__ELASTIC__CLUSTERS__VERIFY_CERTS__ARGS__RETRY_ON_TIMEOUT
+          value: "true"
+        image: docker.io/allegroai/clearml:2.0.0-613
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /debug.ping
+            port: 8008
+            scheme: HTTP
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: clearml-apiserver
+        ports:
+        - containerPort: 8008
+          name: http
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 8
+          httpGet:
+            httpHeaders:
+            - name: Authorization
+              value: Basic R0s0UFJUVlQzNzA2VDI1SzZCQTE6eW1MaDFvazVrNXhOVVFmUzk0NFhkeDl4amYwd3Vlb2txS00yZE1aZkh1SDlheUl0RzI=
+            path: /debug.ping
+            port: 8008
+            scheme: HTTP
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources:
+          limits:
+            cpu: "2"
+            memory: 1Gi
+          requests:
+            cpu: 100m
+            memory: 256Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: false
+          runAsNonRoot: false
+          runAsUser: 0
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /var/log/clearml
+          name: apiserver-logs
+        - mountPath: /opt/clearml/apiserver/apierrors/errors
+          name: apiserver-errors
+        - mountPath: /tmp
+          name: apiserver-cache
+      dnsPolicy: ClusterFirst
+      initContainers:
+      - command:
+        - /bin/sh
+        - -c
+        - |
+          set -x; while [ $(curl --telnet-option BOGUS --connect-timeout 2 -s "telnet://clearml-mongodb:27017" -o /dev/null; echo $?) -ne 49 ] ; do
+            echo "waiting for mongodb" ;
+            sleep 5 ;
+          done ; while [ $(curl --telnet-option BOGUS --connect-timeout 2 -s "telnet://clearml-redis-master:6379" -o /dev/null; echo $?) -ne 49 ] ; do
+            echo "waiting for redis" ;
+            sleep 5 ;
+          done ;
+        image: docker.io/allegroai/clearml:2.0.0-613
+        imagePullPolicy: IfNotPresent
+        name: init-apiserver
+        resources:
+          limits:
+            cpu: 10m
+            memory: 64Mi
+          requests:
+            cpu: 10m
+            memory: 64Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: false
+          runAsNonRoot: false
+          runAsUser: 0
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext:
+        runAsNonRoot: false
+        runAsUser: 0
+      serviceAccount: clearml-apiserver
+      serviceAccountName: clearml-apiserver
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: apiserver-logs
+      - name: apiserver-errors
+      - name: apiserver-cache

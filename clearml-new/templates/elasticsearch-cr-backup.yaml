@@ -1,0 +1,66 @@
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  labels:
+    app.kubernetes.io/component: elasticsearch
+    app.kubernetes.io/name: elasticsearch
+    app.kubernetes.io/part-of: clearml
+  name: clearml-elasticsearch
+  namespace: clearml
+  annotations:
+    eck.k8s.elastic.co/orchestration-hints: '{"no_transient_settings":true,"service_accounts":true}'
+spec:
+  http:
+    tls:
+      selfSignedCertificate:
+        disabled: false
+  nodeSets:
+  - config:
+      cluster.routing.allocation.disk.threshold_enabled: false
+      node.store.allow_mmap: false
+      xpack.security.enabled: false
+    count: 1
+    name: default
+    podTemplate:
+      metadata:
+        creationTimestamp: null
+        labels:
+          app.kubernetes.io/component: elasticsearch
+          app.kubernetes.io/name: elasticsearch
+      spec:
+        containers:
+        - env:
+          - name: ES_JAVA_OPTS
+            value: -Xms1g -Xmx1g
+          name: elasticsearch
+          resources:
+            limits:
+              cpu: "1"
+              memory: 2Gi
+            requests:
+              cpu: 500m
+              memory: 2Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: false
+            runAsNonRoot: true
+        securityContext:
+          seLinuxOptions:
+            level: 's0:c32,c29'
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
+    volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+        storageClassName: managed-nfs-storage
+  version: 8.11.0

@@ -1,0 +1,130 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+    meta.helm.sh/release-name: clearml
+    meta.helm.sh/release-namespace: clearml
+  labels:
+    app.kubernetes.io/instance: clearml
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: clearml
+    app.kubernetes.io/version: "2.0"
+    helm.sh/chart: clearml-7.14.6
+  name: clearml-webserver
+  namespace: clearml
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: clearml-webserver
+      app.kubernetes.io/name: clearml
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app.kubernetes.io/instance: clearml-webserver
+        app.kubernetes.io/name: clearml
+    spec:
+      containers:
+      - args:
+        - webserver
+        env:
+        - name: NGINX_APISERVER_ADDRESS
+          value: http://clearml-apiserver:8008
+        - name: NGINX_FILESERVER_ADDRESS
+          value: http://clearml-fileserver:8081
+        image: docker.io/allegroai/clearml:2.0.0-613
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command:
+            - curl
+            - -X OPTIONS
+            - http://localhost:80/
+          failureThreshold: 3
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: clearml-webserver
+        ports:
+        - containerPort: 80
+          name: http
+          protocol: TCP
+        readinessProbe:
+          exec:
+            command:
+            - curl
+            - -X OPTIONS
+            - http://localhost:80/
+          failureThreshold: 3
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources:
+          limits:
+            cpu: "2"
+            memory: 1Gi
+          requests:
+            cpu: 100m
+            memory: 256Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /mnt/external_files/configs
+          name: webserver-config
+      dnsPolicy: ClusterFirst
+      initContainers:
+      - command:
+        - /bin/sh
+        - -c
+        - |
+          set -x; while [ $(curl -sw '%{http_code}' "http://clearml-apiserver:8008/debug.ping" -o /dev/null) -ne 200 ] ; do
+            echo "waiting for apiserver" ;
+            sleep 5 ;
+          done
+        image: docker.io/allegroai/clearml:2.0.0-613
+        imagePullPolicy: IfNotPresent
+        name: init-webserver
+        resources:
+          limits:
+            cpu: 10m
+            memory: 64Mi
+          requests:
+            cpu: 10m
+            memory: 64Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext:
+        runAsNonRoot: true
+      serviceAccount: clearml-webserver
+      serviceAccountName: clearml-webserver
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: clearml-webserver-configmap
+        name: webserver-config
